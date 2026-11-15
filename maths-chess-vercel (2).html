@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<title>Chess</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f1;--ink:#17262b;--lt:#dfe9e2;--dk:#3f7a6d;--ac:#f2b134;--card:#fff;--mut:#5b6e72;--ok:#2e9e5b;--bad:#d1495b;--s:min(92vw,520px);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101c1b;--ink:#e6f0ec;--lt:#a9c4b6;--dk:#2f5f56;--card:#1b2c2a;--mut:#9ab3ad;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#101c1b;--ink:#e6f0ec;--lt:#a9c4b6;--dk:#2f5f56;--card:#1b2c2a;--mut:#9ab3ad;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Fredoka,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:16px 12px 32px}
+h1{font-size:1.7rem;margin:0 0 4px;font-weight:600}
+.sub{color:var(--mut);margin:0 0 14px;font-size:.95rem}
+main{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;width:100%;max-width:1000px}
+#board{width:var(--s);height:var(--s);display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));border-radius:4px;overflow:hidden;font-size:calc(var(--s)/8*.86);font-family:"Segoe UI Symbol","Noto Sans Symbols 2","DejaVu Sans","Apple Symbols",serif}
+.sq{display:flex;align-items:center;justify-content:center;position:relative;line-height:1;cursor:pointer;user-select:none;min-width:0;min-height:0;overflow:hidden}
+.sq.l{background:#ebecd0}.sq.d{background:#739552}
+.sq.last::after{content:"";position:absolute;inset:0;background:var(--ac);opacity:.35}
+.sq.sel{outline:4px solid #f6f669;outline-offset:-4px}
+.sq.hint::before{content:"";position:absolute;width:28%;height:28%;border-radius:50%;background:var(--ac);opacity:.85;z-index:2}
+.sq.hint.cap::before{width:86%;height:86%;background:none;border:4px solid var(--ac)}
+.pc{position:relative;z-index:1}
+.pc{display:block;line-height:1;transform:translateY(-4%);paint-order:stroke fill;-webkit-text-stroke:calc(var(--s)/8*.05) #222}
+.w{color:#fff;text-shadow:0 .02em 0 rgba(0,0,0,.25)}
+.k{color:#4a4a4a;-webkit-text-stroke-color:#111;text-shadow:0 .02em 0 rgba(0,0,0,.25)}
+aside{width:min(92vw,400px);display:flex;flex-direction:column;gap:12px}
+#score{display:flex;gap:16px;font-weight:500}
+.lv{display:flex;gap:8px;align-items:center;font-weight:500}
+[hidden]{display:none!important}.row{display:flex;gap:6px;flex-wrap:wrap}.row button,.row input,.row select{font:inherit;padding:8px;border-radius:8px;border:2px solid var(--dk);background:var(--card);color:var(--ink);min-width:0}.row input{flex:1}.row button{cursor:pointer}
+#pl div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0}#me{font-weight:500}#cl{max-height:140px;overflow:auto;background:var(--card);border-radius:8px;padding:6px;margin-bottom:6px;font-size:.95rem}
+#room{font-weight:500;min-height:1.2em}
+.lv select{font:inherit;padding:6px 8px;border-radius:8px;border:2px solid var(--dk);background:var(--card);color:var(--ink)}
+#score b{font-weight:600}
+#status{padding:10px 14px;border-radius:10px;background:var(--dk);color:#fff;font-weight:500}
+#card{background:var(--card);border-radius:12px;padding:16px;border:2px solid var(--dk)}
+#q{font-size:1.25rem;font-weight:500;margin:0 0 12px;line-height:1.35}
+#opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#opts button{font:inherit;font-size:1.05rem;padding:12px 8px;border-radius:8px;border:2px solid var(--dk);background:transparent;color:var(--ink);cursor:pointer}
+#opts button:hover:not(:disabled){background:var(--lt);color:#17262b}
+#opts button:focus-visible,#new:focus-visible,.sq:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+#opts button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+#opts button.no{background:var(--bad);border-color:var(--bad);color:#fff}
+#fb{margin-top:10px;min-height:1.4em;font-weight:500}
+#new{font:inherit;padding:10px;border-radius:8px;border:2px solid var(--ac);background:transparent;color:var(--ink);cursor:pointer}
+@media(max-width:420px){#opts{grid-template-columns:1fr}}
+#srv{position:fixed;inset:0;z-index:50;overflow:auto;background:radial-gradient(circle at 20% 30%,#1a2233,#0b0e14 60%);color:#fff;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px))}
+.sw{max-width:900px;margin:0 auto;display:grid;grid-template-columns:240px 1fr;gap:28px;align-items:start}.sw .bk{grid-column:1/-1;justify-self:start}
+#srv button{font:inherit;color:#fff;background:#161b26;border:1px solid #3a4254;padding:8px 14px;cursor:pointer}
+.sh h2{font-size:2.6rem;margin:0}.sh p{color:#9aa3b5}.sh button{display:block;background:none!important;border:0!important;font-size:1.4rem;font-weight:600;padding:6px 0!important;text-align:left}
+.sp{background:#10141d;border:1px solid #232a38}.st{display:flex;gap:12px;align-items:center;padding:10px}.st span{color:#8d96a8;flex:1}.st input{font:inherit;background:#0b0e14;color:#fff;border:1px solid #3a4254;padding:8px;min-width:0;width:40%}
+.rw{display:grid;grid-template-columns:2fr 1.4fr .8fr;gap:8px;padding:14px 12px;border-top:1px solid #1f2634;align-items:center}.rw.hd{background:#0b0e14;font-size:.8rem;color:#9aa3b5;letter-spacing:.05em}
+#sl{max-height:60vh;overflow:auto}#sl .rw{cursor:pointer}#sl .rw:hover,#sl .rw:focus-visible{background:#1a2131;outline:none}.nm{font-weight:600}#sl>:not(.rw){padding:16px;color:#9aa3b5}
+@media(max-width:700px){.sw{grid-template-columns:1fr}.st{flex-wrap:wrap}.st input{width:100%}}
+</style></head><body>
+<h1>Chess</h1>
+<p class="sub">Play chess against the bot or a friend online.</p>
+<main>
+<div id="board" role="grid" aria-label="Chess board"></div>
+<aside>
+<div class="row"><input id="un" placeholder="Username" maxlength="14" aria-label="Username"><input id="pw" type="password" placeholder="Password" aria-label="Password"><button id="li">Log in</button><button id="rg">Register</button></div><div id="me"></div>
+<div class="row"><input id="ln" placeholder="Lobby name" maxlength="20" aria-label="Lobby name"><select id="vis" aria-label="Lobby type"><option value="1">Public</option><option value="0">Private</option></select><button id="mk">Create game</button></div>
+<div class="row"><input id="cd" placeholder="Game code" maxlength="5" aria-label="Game code" style="text-transform:uppercase"><button id="jn">Join</button><button id="bw">Browse public</button></div>
+<div id="room" aria-live="polite"></div>
+<label class="lv">Bot level <select id="lvl"><option value="0">Easy</option><option value="2" selected>Medium</option><option value="4">Hard</option></select></label><div id="score"></div>
+<div id="status"></div>
+<div id="card"><p id="q"></p><div id="opts"></div><div id="fb" aria-live="polite"></div></div>
+<div id="chat" hidden><div id="cl"></div><div class="row"><input id="ci" placeholder="Chat with your opponent" maxlength="140" aria-label="Chat message"><button id="cs">Send</button></div></div>
+<button id="new">New game vs bot</button>
+</aside>
+</main>
+<div id="srv" hidden><div class="sw"><button id="sb" class="bk">← Back</button><div class="sh"><h2>ROOMS</h2><p>Join a room or create your own</p><button id="sc">CREATE ROOM</button><button id="sr">↻ REFRESH</button></div><div class="sp"><div class="st"><b>SERVER LIST</b><span id="cnt"></span><input id="sq" placeholder="Search by name…" aria-label="Search rooms"></div><div class="rw hd"><span>NAME</span><span>HOST</span><span>PLAYERS</span></div><div id="sl"></div></div></div></div>
+<script>
+(()=>{
+const R=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const f=x=>String(+(+x).toFixed(4));
+const sh=a=>[...a].sort(()=>Math.random()-.5);
+const co=n=>n==1?'':n;
+const sg=n=>n<0?'− '+(-n):'+ '+n;
+const N=(q,c,w)=>[q,f(c),w.map(f)];
+const G=[
+()=>{const ds=sh([1,2,3,4,5,6,7,8,9]).slice(0,5),k=R(0,4),n=+ds.join(''),v=p=>(ds[k]*10**p).toLocaleString('en-US');
+ return[`What is the value of the digit ${ds[k]} in ${n.toLocaleString('en-US')}?`,v(4-k),[0,1,2,3,4].filter(p=>p!=4-k).map(v)]},
+()=>{const n=R(1000,99999),u=[10,100,1000][R(0,2)],c=Math.round(n/u)*u;
+ return N(`Round ${n.toLocaleString('en-US')} to the nearest ${u}.`,c,[c+u,c-u,Math.floor(n/u)*u+u*2])},
+()=>{const x=R(10000,99999)/10000,c=+x.toFixed(2);
+ return N(`Round ${f(x)} to 2 decimal places.`,c,[+x.toFixed(1),+x.toFixed(3),c+.01,c-.01])},
+()=>{const a=R(100,999)/10,b=R(10,99)/100;return N(`${f(a)} + ${f(b)} =`,a+b,[a+b+.1,a+b-.1,a+b+1,a+b-.9,(a+b)*10])},
+()=>{const a=R(200,999)/10,b=R(10,99)/100;return N(`${f(a)} − ${f(b)} =`,a-b,[a-b+.1,a-b-.1,a-b+1,a-b+.9,a-b-.8])},
+()=>{const a=R(12,98)/10,b=R(2,9),c=a*b;return N(`${f(a)} × ${b} =`,c,[c*10,c/10,c+1,c-1])},
+()=>{const n=R(10,99),c=n/8;return N(`${n} ÷ 8 =`,c,[c+.125,c-.125,c+.25,c*10,c+1])},
+()=>{const a=R(2,9),b=R(2,9),c=R(2,9),r=a+b*c;return N(`${a} + ${b} × ${c} =`,r,[(a+b)*c,r+1,r-1,r+c])},
+()=>{const a=R(2,9),s=R(2,9),b=R(2,9);return N(`${a}² + √${s*s} × ${b} =`,a*a+s*b,[(a*a+s)*b,a*a+s*b+s,a+s+b,a*2+s*b])},
+()=>{const a=R(1,5),b=R(1,4),c=R(2,9),r=(a+b)**2-c;return N(`(${a} + ${b})² − ${c} =`,r,[a*a+b*b-c,(a+b)*2-c,r+c*2,r+2])},
+()=>{const a=R(2,9),b=R(2,9);return N(`−${a} − ${b} =`,-(a+b),[a+b,b-a,a-b,-(a+b)+2*Math.min(a,b)])},
+()=>{const a=R(2,9),b=R(2,9);return N(`${a} − (−${b}) =`,a+b,[a-b,b-a,-(a+b),a+b+1])},
+()=>{const a=R(2,9),b=R(2,9),t=R(0,1);return t?N(`(−${a}) × ${b} =`,-a*b,[a*b,-a-b,a-b,-a*b+1]):N(`(−${a*b}) ÷ (−${b}) =`,a,[-a,a*b,b,a+1])},
+()=>{const x=R(12,999)/10,m=[10,100,1000][R(0,2)],t=R(0,1),c=t?x*m:x/m;
+ return N(t?`${f(x)} × ${m} =`:`${f(x)} ÷ ${m} =`,c,[t?c*10:c/10,t?c/10:c*10,x*m,x/m].filter(v=>f(v)!=f(c)))},
+()=>{const a=R(2,6),b=R(2,6),c=R(1,a-1),d=R(1,5),B=b+d;
+ return[`Simplify ${a}x + ${b}y − ${c}x + ${d}y`,`${co(a-c)}x + ${B}y`,[`${a+c}x + ${B}y`,`${co(a-c)}x + ${b-d}y`,`${a-c+B}xy`]]},
+()=>{const a=R(2,9),b=R(2,9);return[`In the expression ${a}x + ${b}, what is the coefficient of x?`,String(a),[String(b),String(a+b),'1','x']]},
+()=>{const a=R(2,9),b=R(2,9),t=R(0,1),s=t?'−':'+';
+ return[`Expand ${a}(x ${s} ${b})`,`${a}x ${s} ${a*b}`,[`${a}x ${s} ${b}`,`x ${s} ${a*b}`,`${a}x ${t?'+':'−'} ${a*b}`]]},
+()=>{const a=R(2,5),b=R(1,6),c=R(2,5),d=R(1,6),k=a*b-c*d;
+ return[`Expand and simplify ${a}(x + ${b}) + ${c}(x − ${d})`,`${a+c}x ${sg(k)}`,[`${a+c}x ${sg(a*b+c*d)}`,`${a+c}x ${sg(b-d)}`,`${a-c}x ${sg(k)}`]]},
+()=>{const a=R(2,7),b=R(2,7);return[`Expand and simplify x(x + ${a}) + ${b}x`,`x² + ${a+b}x`,[`x² + ${a*b}x`,`2x + ${a+b}x`,`x² + ${a}x + ${b}`]]},
+()=>{const a=R(2,6),b=R(2,6),c=R(1,a+b-1),r=a+b-c;return[`Simplify ${a}x² + ${b}x² − ${c}x²`,`${r}x²`,[`${r}x⁴`,`${a+b+c}x²`,`${r}x`]]},
+()=>{let a;do{a=Array.from({length:5},()=>R(1,15))}while(a.reduce((s,x)=>s+x)%5);const m=a.reduce((s,x)=>s+x)/5;
+ return N(`Find the mean of ${a.join(', ')}.`,m,[m+1,m-1,m+2,sh(a)[0]])},
+()=>{const a=sh([...new Set(Array.from({length:30},()=>R(1,20)))]).slice(0,5),s=[...a].sort((x,y)=>x-y);
+ return[`Find the median of ${a.join(', ')}.`,String(s[2]),[s[1],s[3],a[2]===s[2]?s[0]:a[2],s[4]].map(String)]},
+()=>{const p=sh([...new Set(Array.from({length:30},()=>R(1,20)))]).slice(0,4),l=sh([p[0],p[0],p[1],p[2],p[3]]);
+ return[`Find the mode of ${l.join(', ')}.`,String(p[0]),[p[1],p[2],p[3]].map(String)]},
+()=>{let fr,t,s;for(let i=0;i<300;i++){fr=[R(1,6),R(1,6),R(1,6),R(1,6)];t=fr.reduce((a,b)=>a+b);s=fr.reduce((a,b,j)=>a+b*(j+1),0);if(s%t==0)break}
+ const m=s/t;return N(`A table shows x = 1, 2, 3, 4 with frequencies ${fr.join(', ')}. What is the mean of x?`,m,[2.5,m+1,m-1,s,t])},
+()=>{const a=R(50,90)/10,b=a+R(1,8)/10,t=R(0,1);
+ return[`Class A has a mean of ${f(t?a:b)} and Class B has a mean of ${f(t?b:a)}. Which class scored higher on average?`,t?'Class B':'Class A',[t?'Class A':'Class B','They are equal','Cannot tell']]}
+];
+const GL={k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'},V={p:1,n:3,b:3,r:5,q:9,k:0};
+const isW=p=>p===p.toUpperCase();
+const D8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+const DIR={r:D8.slice(0,4),b:D8.slice(4),q:D8,k:D8,n:[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]};
+function mv(b,i){const p=b[i],t=p.toLowerCase(),w=isW(p),r=i>>3,c=i&7,o=[],ok=(x,y)=>x>=0&&x<8&&y>=0&&y<8,en=q=>q&&isW(q)!==w;
+ if(t=='p'){const d=w?-1:1,r2=r+d;if(ok(r2,c)&&!b[r2*8+c]){o.push(r2*8+c);if(r==(w?6:1)&&!b[(r2+d)*8+c])o.push((r2+d)*8+c)}
+  for(const dc of[-1,1])if(ok(r2,c+dc)&&en(b[r2*8+c+dc]))o.push(r2*8+c+dc);return o}
+ const sl='qrb'.includes(t);
+ for(const[dr,dc]of DIR[t]){let x=r+dr,y=c+dc;while(ok(x,y)){const q=b[x*8+y];if(!q)o.push(x*8+y);else{if(en(q))o.push(x*8+y);break}if(!sl)break;x+=dr;y+=dc}}
+ return o}
+function ap(b,i,j){const n=b.slice(),p=n[i];n[j]=p;n[i]='';if(p=='P'&&j<8)n[j]='Q';if(p=='p'&&j>55)n[j]='q';return n}
+function inCheck(b,s){const k=b.indexOf(s==1?'K':'k');return b.some((p,i)=>p&&isW(p)!==(s==1)&&mv(b,i).includes(k))}
+function legal(b,s){const o=[];b.forEach((p,i)=>{if(p&&isW(p)==(s==1))mv(b,i).forEach(j=>{if(b[j].toLowerCase()=='k')return;if(!inCheck(ap(b,i,j),s))o.push([i,j])})});return o}
+const ev=b=>b.reduce((s,p)=>p?s+(isW(p)?1:-1)*V[p.toLowerCase()]:s,0);
+function gen(b,s){const o=[],cv=j=>b[j]?V[b[j].toLowerCase()]+1:0;b.forEach((p,i)=>{if(p&&isW(p)==(s==1))mv(b,i).forEach(j=>o.push([i,j]))});return o.sort((x,y)=>cv(y[1])-cv(x[1]))}
+function ng(b,s,d,a,be){if(!d)return s*ev(b);let best=-1e9;for(const[i,j]of gen(b,s)){if(b[j]&&b[j].toLowerCase()=='k')return 1000+d;const v=-ng(ap(b,i,j),-s,d-1,-be,-a);if(v>best)best=v;if(v>a)a=v;if(a>=be)break}return best==-1e9?0:best}
+function aiPick(b){const L=legal(b,-1),d=+$('lvl').value;if(!L.length)return null;
+ if(!d){const c=L.filter(m=>b[m[1]]),p=c.length&&Math.random()<.4?c:L;return p[R(0,p.length-1)]}
+ let best=-1e9,pick=null;
+ for(const[i,j]of L){const nb=ap(b,i,j);let sc;
+  if(!legal(nb,1).length)sc=inCheck(nb,1)?1000:0;else sc=-ng(nb,1,d-1,-1e9,1e9);
+  sc+=Math.random()*.2;if(sc>best){best=sc;pick=[i,j]}}
+ return pick}
+let B,sel,phase,cur,last=[],over=false,sc={r:0,w:0},hints=[];
+let mode='bot',me=1,flip=false,unsub=null,dbh=null,myid=null,code='',dbs=null;const online=()=>mode=='online';
+const $=id=>document.getElementById(id);
+const START=()=>['r','n','b','q','k','b','n','r',...Array(8).fill('p'),...Array(32).fill(''),...Array(8).fill('P'),'R','N','B','Q','K','B','N','R'];
+function init(){if(unsub){unsub();unsub=null}mode='bot';me=1;flip=false;$('room').textContent='';$('chat').hidden=true;$('sl').innerHTML='';B=START();
+ sel=null;last=[];over=false;sc={r:0,w:0};ask()}
+function mkQ(){const[q,c,w]=G[R(0,G.length-1)]();const s=new Set(w.map(String));s.delete(c);let k=1;const n=parseFloat(c);
+ while(s.size<3&&k<30){if(!isNaN(n))s.add(f(n+k));k++;if(!isNaN(n)&&s.size<3)s.add(f(n-k))}s.delete(c);
+ return{q,c,o:sh([c,...sh([...s]).slice(0,3)])}}
+function ask(){if(over)return;if(!quiz()){phase='move';sel=null;hints=[];$('q').textContent='Your turn: move a piece.';$('opts').innerHTML='';$('fb').textContent='';status(inCheck(B,me)?'Your king is in check. Move one of your pieces.':'Pick one of your pieces to move.');draw();return}phase='q';sel=null;hints=[];cur=mkQ();$('fb').textContent='';
+ $('q').textContent=cur.q;const o=$('opts');o.innerHTML='';
+ cur.o.forEach(t=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>answer(b,t);o.appendChild(b)});
+ status('Answer correctly to earn your move.');draw()}
+function answer(btn,t){if(phase!='q')return;const bs=[...$('opts').children];bs.forEach(b=>b.disabled=true);
+ if(t==cur.c){sc.r++;btn.classList.add('ok');phase='move';$('fb').textContent='Correct! Your move.';
+  if(!legal(B,me).length){$('fb').textContent='Correct, but you have no legal moves. Skipping.';setTimeout(online()?pushPass:ask,1200)}
+  else status(inCheck(B,me)?'Your king is in check. Move one of your pieces.':'Pick one of your pieces to move.')}
+ else{sc.w++;btn.classList.add('no');bs.find(b=>b.textContent==cur.c).classList.add('ok');phase='ai';
+  $('fb').textContent='Not quite. The answer was '+cur.c+'. You skip this turn.';if(online()){status('Turn passed to your opponent.');setTimeout(pushPass,1100)}else{status('AI is thinking…');setTimeout(aiMove,1100)}}
+ draw()}
+function finish(side){const o=legal(B,side);if(o.length)return false;
+ over=true;phase='end';status(inCheck(B,side)?(side==-me?'Checkmate! You win!':online()?'Checkmate. Your opponent wins.':'Checkmate. The AI wins.'):'Stalemate. It is a draw.');return true}
+function aiMove(){const m=aiPick(B);if(!m){if(!finish(-1)){setTimeout(ask,800)}draw();return}
+ B=ap(B,m[0],m[1]);last=m;draw();if(finish(1)){draw();return}
+ setTimeout(ask,1300)}
+function status(t){$('status').textContent=t}
+function click(i){if(phase!='move')return;const L=legal(B,me);
+ if(sel!==null&&hints.includes(i)){B=ap(B,sel,i);last=[sel,i];sel=null;hints=[];phase='wait';draw();const e=finish(-me);if(online()){push(e);return}if(e){draw();return}
+  status('AI is thinking…');setTimeout(aiMove,800);return}
+ if(B[i]&&isW(B[i])==(me==1)){sel=i;hints=L.filter(m=>m[0]==i).map(m=>m[1])}else{sel=null;hints=[]}
+ draw()}
+function draw(){const bd=$('board');bd.innerHTML='';
+ for(let k=0;k<64;k++){const i=flip?63-k:k;const d=document.createElement('div'),r=i>>3,c=i&7;
+  d.className='sq '+((r+c)%2?'d':'l')+(last.includes(i)?' last':'')+(sel===i?' sel':'')+(hints.includes(i)?' hint'+(B[i]?' cap':''):'');
+  d.setAttribute('role','gridcell');
+  if(B[i]){const s=document.createElement('span');s.className='pc '+(isW(B[i])?'w':'k');s.textContent=GL[B[i].toLowerCase()]+'\uFE0E';d.appendChild(s)}
+  d.onclick=()=>click(i);bd.appendChild(d)}
+ $('score').innerHTML=`<span>Correct: <b>${sc.r}</b></span><span>Wrong: <b>${sc.w}</b></span>`}
+const lobbyMsg=t=>{$('room').textContent=t};
+const OPT={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
+const perr=e=>e.type=='peer-unavailable'?'No game with that code.':e.type=='unavailable-id'?'Code clash. Press Create game again.':['network','server-error','socket-error','socket-closed'].includes(e.type)?'Cannot reach the PeerJS server. Your wifi may block it. Try mobile data.':'Connection problem: '+e.type;
+let pubGame=false,lastList=[],peer=null,conn=null,S=null,rated=0,myLobby=null,rsend=null,rbusy=0,rq=[],rp=null;const lob=new Map(),REG='mathschess-lobbies';
+const quiz=()=>false;
+const A=()=>{try{return JSON.parse(localStorage.getItem('mc_a')||'{}')}catch(e){return{}}};
+let cu=localStorage.getItem('mc_u')||'';if(!A()[cu])cu='';
+const myName=()=>cu||$('un').value.trim().slice(0,14)||'Guest',myElo=()=>cu?A()[cu].e:null;
+function showMe(msg){$('me').textContent=msg||(cu?cu+', Elo '+A()[cu].e:'Playing as a guest (no Elo)');$('li').textContent=cu?'Log out':'Log in'}
+async function hash(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function auth(reg){const u=$('un').value.trim().slice(0,14),p=$('pw').value;if(!u||p.length<4)return showMe('Enter a username and a password (4+ characters).');
+ const a=A(),h=await hash(p);
+ if(reg){if(a[u])return showMe('That username is taken on this device.');a[u]={h,e:1000}}else if(!a[u]||a[u].h!=h)return showMe('Wrong username or password.');
+ localStorage.setItem('mc_a',JSON.stringify(a));localStorage.setItem('mc_u',cu=u);$('pw').value='';showMe()}
+function wait(t){phase='wait';sel=null;hints=[];$('q').textContent=t;$('opts').innerHTML='';$('fb').textContent='';status(t)}
+function addChat(n,m){const d=document.createElement('div');d.textContent=n+': '+m;$('cl').appendChild(d);$('cl').scrollTop=1e5}
+function sendChat(){const m=$('ci').value.trim();if(!m||!conn)return;try{conn.send({chat:m,n:myName()});addChat('You',m)}catch(e){}$('ci').value=''}
+function wire(c){conn=c;c.on('data',d=>{if(d.chat)return addChat(d.n,d.chat);
+ if(d.hi){S.black=true;S.bn=d.n;S.be=d.e;if(myLobby&&rsend)rsend({unreg:code});myLobby=null;c.send(S);return onGame(S)}S=d;onGame(S)});
+ c.on('close',()=>{if(!over)lobbyMsg('Your opponent disconnected.')});c.on('error',()=>lobbyMsg('Connection error.'))}
+function enter(side){mode='online';me=side;flip=side==-1;over=false;rated=0;sel=null;hints=[];sc={r:0,w:0};phase='wait';
+ $('chat').hidden=false;$('cl').innerHTML='';lobbyMsg(pubGame?'Public lobby':'Game code: '+code);
+ unsub=()=>{if(myLobby&&rsend)rsend({unreg:myLobby.code});myLobby=null;try{peer&&peer.destroy()}catch(e){}peer=null;conn=null}}
+function create(){if(!window.Peer)return lobbyMsg('Online play could not load. Check your internet connection.');
+ if(unsub){unsub();unsub=null}
+ code=Array.from({length:5},()=>'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[R(0,30)]).join('');lobbyMsg('Creating game\u2026');S=null;mode='bot';
+ const nm=$('ln').value.trim().slice(0,20)||myName()+'\u2019s lobby',pub=$('vis').value=='1';
+ pubGame=pub;peer=new Peer('mathschess-'+code,OPT);
+ peer.on('open',()=>{S={b:JSON.stringify(START()),last:[],turn:'w',black:false,res:'',winner:0,wn:myName(),we:myElo(),bn:'',be:null,quiz:false,name:nm,pub:pub};enter(1);onGame(S);
+  if(pub){myLobby={code,name:nm,host:myName(),elo:myElo(),quiz:S.quiz};regOpen(()=>rsend({reg:myLobby}))}});
+ peer.on('connection',c=>{if(S&&S.black){c.close();return}wire(c)});
+ peer.on('error',e=>lobbyMsg(perr(e)));
+ setTimeout(()=>{if(!S||S.wn==null||mode!='online')lobbyMsg('Still connecting\u2026 if this stays, your wifi may be blocking the PeerJS server. Try mobile data.')},10000)}
+function join(p){pubGame=p===true;const c=$('cd').value.trim().toUpperCase();if(!c)return lobbyMsg('Type a game code first.');
+ if(!window.Peer)return lobbyMsg('Online play could not load. Check your internet connection.');
+ if(unsub){unsub();unsub=null}code=c;lobbyMsg('Joining\u2026');
+ peer=new Peer(undefined,OPT);
+ peer.on('open',()=>{const k=peer.connect('mathschess-'+c,{reliable:true});wire(k);
+  const t=setTimeout(()=>lobbyMsg('Could not reach that game. Check the code.'),9000);
+  k.on('open',()=>{clearTimeout(t);enter(-1);k.send({hi:1,n:myName(),e:myElo()})})});
+ peer.on('error',e=>lobbyMsg(perr(e)))}
+function onGame(g){B=JSON.parse(g.b);last=g.last||[];sel=null;hints=[];
+ if(g.black)lobbyMsg(g.wn+(g.we?' ('+g.we+')':'')+' vs '+g.bn+(g.be?' ('+g.be+')':''));
+ if(g.res){over=true;phase='end';let t=g.res=='stale'?'Stalemate. It is a draw.':(g.winner==me?'Checkmate! You win!':'Checkmate. Your opponent wins.');
+  if(!rated&&cu){rated=1;const oe=(me==1?g.be:g.we)||1000,a=A(),e=a[cu].e,s=g.res=='stale'?.5:g.winner==me?1:0,n=Math.round(e+32*(s-1/(1+10**((oe-e)/400))));a[cu].e=n;localStorage.setItem('mc_a',JSON.stringify(a));t+=' Elo '+e+' \u2192 '+n;showMe()}
+  status(t);$('q').textContent=t;$('opts').innerHTML='';$('fb').textContent='';draw();return}
+ if(!g.black){wait(g.pub?'Waiting for a player to join your lobby…':'Waiting for a friend. Share the code '+code+'.');draw();return}
+ if((g.turn=='w'?1:-1)==me){if(phase=='wait')ask();else draw()}else{wait('Opponent\u2019s turn\u2026');draw()}}
+function push(e){S={...S,b:JSON.stringify(B),last,turn:me==1?'b':'w'};if(e){S.res=inCheck(B,-me)?'mate':'stale';S.winner=me}
+ try{conn.send(S)}catch(x){status('Move failed to send.')}onGame(S)}
+function pushPass(){phase='wait';S={...S,turn:me==1?'b':'w'};try{conn.send(S)}catch(x){status('Could not pass the turn.')}onGame(S)}
+function showList(a){lastList=a;const p=$('sl'),q=$('sq').value.trim().toLowerCase(),f=a.filter(l=>l.name.toLowerCase().includes(q));$('cnt').textContent=a.length+' Rooms';p.innerHTML='';
+ if(!f.length){const d=document.createElement('div');d.textContent=a.length?'No rooms match your search.':'No public rooms right now. Create one!';p.appendChild(d);return}
+ f.forEach(l=>{const d=document.createElement('div');d.className='rw';d.tabIndex=0;d.setAttribute('role','button');
+  [[l.name,'nm'],[l.host+(l.elo?' ('+l.elo+')':''),''],['1/2','']].forEach(([t,c])=>{const x=document.createElement('span');x.textContent=t;if(c)x.className=c;d.appendChild(x)});
+  const go=()=>{$('srv').hidden=true;$('cd').value=l.code;join(true)};d.onclick=go;d.onkeydown=e=>{if(e.key=='Enter')go()};p.appendChild(d)})}
+function regFail(t){$('sl').textContent=t;if(myLobby)lobbyMsg('Not listed publicly yet: '+t)}
+function regOpen(f){if(rsend)return f();rq.push(f);if(rbusy)return;rbusy=1;
+ const bad=t=>{if(!rbusy)return;rbusy=0;rq=[];regFail(t)},tm=setTimeout(()=>bad('Could not reach the lobby server. Your wifi may block it. Try mobile data.'),10000);
+ const ready=x=>{clearTimeout(tm);rsend=x;rbusy=0;const q=rq;rq=[];q.forEach(y=>y())};
+ const p=new Peer(REG,OPT);
+ p.on('open',()=>{rp=p;ready(m=>hr(m,null))});
+ p.on('connection',c=>{c.on('data',m=>hr(m,c));c.on('close',()=>lob.forEach((v,k)=>{if(v.c===c)lob.delete(k)}))});
+ p.on('error',e=>{if(e.type!='unavailable-id'){bad('Lobby server error: '+e.type);return}p.destroy();const q=new Peer(undefined,OPT);
+  q.on('open',()=>{const c=q.connect(REG,{reliable:true});c.on('open',()=>ready(m=>c.send(m)));c.on('data',m=>{if(m.list)showList(m.list)});
+   c.on('close',()=>{rsend=null;if(myLobby)setTimeout(()=>regOpen(()=>rsend({reg:myLobby})),1500+R(0,2500))})});
+  q.on('error',x=>bad(x.type=='peer-unavailable'?'The lobby list is restarting. Trying again\u2026':'Lobby server error: '+x.type))})}
+function hr(m,c){if(m.reg)lob.set(m.reg.code,{...m.reg,c});if(m.unreg)lob.delete(m.unreg);
+ if(m.ls){const a=[...lob.values()].map(({c,...r})=>r);c?c.send({list:a}):showList(a)}}
+$('rg').onclick=()=>auth(1);$('li').onclick=()=>cu?(cu='',localStorage.removeItem('mc_u'),showMe()):auth(0);
+const refresh=a=>{if(a!==true)$('sl').textContent='Looking…';regOpen(()=>rsend({ls:1}))};
+setInterval(()=>{if(!$('srv').hidden&&!rbusy)refresh(true);if(myLobby&&!rbusy)regOpen(()=>rsend({reg:myLobby}))},6000);
+$('bw').onclick=()=>{$('srv').hidden=false;refresh()};$('sb').onclick=()=>{$('srv').hidden=true};$('sr').onclick=refresh;$('sc').onclick=()=>{$('srv').hidden=true;$('ln').focus()};$('sq').oninput=()=>showList(lastList);
+$('cs').onclick=sendChat;$('ci').onkeydown=e=>{if(e.key=='Enter')sendChat()};showMe();
+$('mk').onclick=create;$('jn').onclick=join;
+$('new').onclick=init;
+init();
+})();
+</script></body></html>
